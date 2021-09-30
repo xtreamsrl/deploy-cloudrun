@@ -8548,7 +8548,7 @@ function run() {
                     'run',
                     'services',
                     'replace',
-                    replaceEnvVarsInYaml ? metadata : exports.TEMPLATED_YAML_FILE,
+                    replaceEnvVarsInYaml ? exports.TEMPLATED_YAML_FILE : metadata,
                     '--platform',
                     'managed',
                     '--region',
