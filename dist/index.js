@@ -8541,6 +8541,9 @@ function run() {
                 if (image || name || envVars || secrets) {
                     core.warning('Metadata YAML provided: ignoring `image`, `service`, `env_vars` and `secrets` inputs.');
                 }
+                if (replaceEnvVarsInYaml) {
+                    createYamlFileWithEnvVars(metadata, exports.TEMPLATED_YAML_FILE);
+                }
                 cmd = [
                     'run',
                     'services',

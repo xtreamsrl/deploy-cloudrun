@@ -107,6 +107,9 @@ export async function run(): Promise<void> {
           'Metadata YAML provided: ignoring `image`, `service`, `env_vars` and `secrets` inputs.',
         );
       }
+      if(replaceEnvVarsInYaml) {
+        createYamlFileWithEnvVars(metadata, TEMPLATED_YAML_FILE);
+      }
       cmd = [
         'run',
         'services',
