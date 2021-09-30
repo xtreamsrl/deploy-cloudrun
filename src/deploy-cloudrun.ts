@@ -114,7 +114,7 @@ export async function run(): Promise<void> {
         'run',
         'services',
         'replace',
-        replaceEnvVarsInYaml ? metadata : TEMPLATED_YAML_FILE,
+        replaceEnvVarsInYaml ? TEMPLATED_YAML_FILE : metadata,
         '--platform',
         'managed',
         '--region',
