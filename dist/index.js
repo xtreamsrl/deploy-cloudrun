@@ -8541,9 +8541,6 @@ function run() {
                 if (image || name || envVars || secrets) {
                     core.warning('Metadata YAML provided: ignoring `image`, `service`, `env_vars` and `secrets` inputs.');
                 }
-                if (replaceEnvVarsInYaml) {
-                    createYamlFileWithEnvVars(metadata, exports.TEMPLATED_YAML_FILE);
-                }
                 cmd = [
                     'run',
                     'services',
@@ -8678,7 +8675,7 @@ exports.run = run;
 function createYamlFileWithEnvVars(yamlTemplatePath, destinationFile) {
     let yamlContent = fs_1.default.readFileSync(yamlTemplatePath).toString();
     for (const envVarName in process.env) {
-        yamlContent = yamlContent.replace(new RegExp(`/${envVarName}/gi`), process.env[envVarName]);
+        yamlContent = yamlContent.split(`\$\{${envVarName}\}`).join(process.env[envVarName]);
     }
     fs_1.default.writeFileSync(destinationFile, yamlContent);
 }

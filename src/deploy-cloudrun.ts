@@ -238,7 +238,6 @@ export function createYamlFileWithEnvVars(
   destinationFile: string,
 ) {
   let yamlContent = fs.readFileSync(yamlTemplatePath).toString();
-  console.debug(process.env);
   for (const envVarName in process.env) {
     yamlContent = yamlContent.split(`\$\{${envVarName}\}`).join(process.env[envVarName]!);
   }
