@@ -19,7 +19,9 @@ import * as sinon from 'sinon';
 import * as core from '@actions/core';
 import * as setupGcloud from '../../setup-google-cloud-sdk/src';
 import { expect } from 'chai';
-import { run, setUrlOutput, parseFlags } from '../../src/deploy-cloudrun';
+import { run, setUrlOutput, parseFlags, createYamlFileWithEnvVars } from '../../src/deploy-cloudrun';
+import path from 'path';
+import fs from 'fs';
 
 /* eslint-disable @typescript-eslint/camelcase */
 // These are mock data for github actions inputs, where camel case is expected.
@@ -185,6 +187,19 @@ describe('#parseFlags', function() {
     const input = '--entry-point="node index.js"';
     const results = parseFlags(input);
     expect(results).to.eql(["--entry-point", "\"node index.js\""])
+  })
+})
+
+describe('#createYamlFileWithEnvVars', function() {
+  it('parses flags using equals', async function() {
+    process.env.VAR1_NAME = 'var1value';
+    process.env.VAR2_NAME = 'var2value';
+    const destPath = path.join(__dirname, './service.envtemplate.updated.yaml');
+    createYamlFileWithEnvVars(path.join(__dirname, 'service.envtemplate.yaml'), destPath);
+    const fileContent = fs.readFileSync(destPath).toString();
+    expect(fileContent).contain(`value: 'var1value'`);
+    expect(fileContent).contain(`value: 'var2value'`);
+    fs.unlinkSync(destPath);
   })
 })
 

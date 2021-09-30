@@ -1767,7 +1767,7 @@ function onceStrict (fn) {
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toCommandValue = void 0;
+exports.toCommandProperties = exports.toCommandValue = void 0;
 /**
  * Sanitizes an input into a string so it can be passed into issueCommand safely
  * @param input input to sanitize into a string
@@ -1782,6 +1782,25 @@ function toCommandValue(input) {
     return JSON.stringify(input);
 }
 exports.toCommandValue = toCommandValue;
+/**
+ *
+ * @param annotationProperties
+ * @returns The command properties to send with the actual annotation command
+ * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
+ */
+function toCommandProperties(annotationProperties) {
+    if (!Object.keys(annotationProperties).length) {
+        return {};
+    }
+    return {
+        title: annotationProperties.title,
+        line: annotationProperties.startLine,
+        endLine: annotationProperties.endLine,
+        col: annotationProperties.startColumn,
+        endColumn: annotationProperties.endColumn
+    };
+}
+exports.toCommandProperties = toCommandProperties;
 //# sourceMappingURL=utils.js.map
 
 /***/ }),
@@ -4349,7 +4368,7 @@ function getReleaseURL(os, arch, version) {
         try {
             const url = formatReleaseURL(os, arch, version);
             const client = new httpm.HttpClient('github-actions-setup-gcloud-sdk');
-            return attempt_1.retry(() => __awaiter(this, void 0, void 0, function* () {
+            return (0, attempt_1.retry)(() => __awaiter(this, void 0, void 0, function* () {
                 const res = yield client.head(url);
                 if (res.message.statusCode === 200) {
                     return url;
@@ -4926,7 +4945,7 @@ function getLatestGcloudSDKVersion() {
     return __awaiter(this, void 0, void 0, function* () {
         const queryUrl = 'https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json';
         const client = new httpm.HttpClient('github-actions-setup-gcloud-sdk');
-        return yield attempt_1.retry(() => __awaiter(this, void 0, void 0, function* () {
+        return yield (0, attempt_1.retry)(() => __awaiter(this, void 0, void 0, function* () {
             const res = yield client.get(queryUrl);
             if (res.message.statusCode != 200) {
                 throw new Error(`Failed to retrieve gcloud SDK version, HTTP error code: ${res.message.statusCode} url: ${queryUrl}`);
@@ -6896,7 +6915,7 @@ if (typeof Object.create === 'function') {
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const deploy_cloudrun_1 = __webpack_require__(530);
-deploy_cloudrun_1.run();
+(0, deploy_cloudrun_1.run)();
 
 
 /***/ }),
@@ -7951,7 +7970,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
+exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __webpack_require__(431);
 const file_command_1 = __webpack_require__(102);
 const utils_1 = __webpack_require__(82);
@@ -8129,19 +8148,30 @@ exports.debug = debug;
 /**
  * Adds an error issue
  * @param message error issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function error(message) {
-    command_1.issue('error', message instanceof Error ? message.toString() : message);
+function error(message, properties = {}) {
+    command_1.issueCommand('error', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.error = error;
 /**
- * Adds an warning issue
+ * Adds a warning issue
  * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function warning(message) {
-    command_1.issue('warning', message instanceof Error ? message.toString() : message);
+function warning(message, properties = {}) {
+    command_1.issueCommand('warning', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.warning = warning;
+/**
+ * Adds a notice issue
+ * @param message notice issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function notice(message, properties = {}) {
+    command_1.issueCommand('notice', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+exports.notice = notice;
 /**
  * Writes info to log with console.log.
  * @param message info message
@@ -8422,14 +8452,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseFlags = exports.setUrlOutput = exports.run = exports.GCLOUD_METRICS_LABEL = exports.GCLOUD_METRICS_ENV_VAR = void 0;
+exports.convertUnknown = exports.parseFlags = exports.setUrlOutput = exports.createYamlFileWithEnvVars = exports.run = exports.TEMPLATED_YAML_FILE = exports.GCLOUD_METRICS_LABEL = exports.GCLOUD_METRICS_ENV_VAR = void 0;
 const core = __importStar(__webpack_require__(470));
 const exec = __importStar(__webpack_require__(986));
 const toolCache = __importStar(__webpack_require__(533));
 const setupGcloud = __importStar(__webpack_require__(628));
 const path_1 = __importDefault(__webpack_require__(622));
+const fs_1 = __importDefault(__webpack_require__(747));
 exports.GCLOUD_METRICS_ENV_VAR = 'CLOUDSDK_METRICS_ENVIRONMENT';
 exports.GCLOUD_METRICS_LABEL = 'github-actions-deploy-cloudrun';
+exports.TEMPLATED_YAML_FILE = './deploy-cloud-run-templated-service.yaml';
 /**
  * Executes the main action. It includes the main business logic and is the
  * primary entry point. It is documented inline.
@@ -8457,6 +8489,9 @@ function run() {
             const revTraffic = core.getInput('revision_traffic');
             const tagTraffic = core.getInput('tag_traffic');
             const flags = core.getInput('flags');
+            const replaceEnvVarsInYaml = core.getInput('replace_env_vars_in_yaml').toLowerCase() == 'true'
+                ? true
+                : false;
             let installBeta = false; // Flag for installing gcloud beta components
             let cmd;
             // Throw errors if inputs aren't valid
@@ -8506,11 +8541,14 @@ function run() {
                 if (image || name || envVars || secrets) {
                     core.warning('Metadata YAML provided: ignoring `image`, `service`, `env_vars` and `secrets` inputs.');
                 }
+                if (replaceEnvVarsInYaml) {
+                    createYamlFileWithEnvVars(metadata, exports.TEMPLATED_YAML_FILE);
+                }
                 cmd = [
                     'run',
                     'services',
                     'replace',
-                    metadata,
+                    replaceEnvVarsInYaml ? metadata : exports.TEMPLATED_YAML_FILE,
                     '--platform',
                     'managed',
                     '--region',
@@ -8622,16 +8660,29 @@ function run() {
                     throw new Error(errOutput);
                 }
                 else {
-                    throw new Error(error);
+                    throw new Error(convertUnknown(error));
+                }
+            }
+            finally {
+                if (replaceEnvVarsInYaml) {
+                    fs_1.default.unlinkSync(exports.TEMPLATED_YAML_FILE);
                 }
             }
         }
         catch (error) {
-            core.setFailed(error.message);
+            core.setFailed(convertUnknown(error));
         }
     });
 }
 exports.run = run;
+function createYamlFileWithEnvVars(yamlTemplatePath, destinationFile) {
+    let yamlContent = fs_1.default.readFileSync(yamlTemplatePath).toString();
+    for (const envVarName in process.env) {
+        yamlContent = yamlContent.replace(new RegExp(`/${envVarName}/gi`), process.env[envVarName]);
+    }
+    fs_1.default.writeFileSync(destinationFile, yamlContent);
+}
+exports.createYamlFileWithEnvVars = createYamlFileWithEnvVars;
 function setUrlOutput(output) {
     // regex to match Cloud Run URLs
     const urlMatch = output.match(/https:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.app/g);
@@ -8649,6 +8700,13 @@ function parseFlags(flags) {
     return flags.match(/(".*?"|[^"\s=]+)+(?=\s*|\s*$)/g); // Split on space or "=" if not in quotes
 }
 exports.parseFlags = parseFlags;
+function convertUnknown(unknown) {
+    if (unknown instanceof Error) {
+        return unknown.message;
+    }
+    return unknown;
+}
+exports.convertUnknown = convertUnknown;
 
 
 /***/ }),
@@ -10667,6 +10725,7 @@ const downloadUtil = __importStar(__webpack_require__(859));
 const installUtil = __importStar(__webpack_require__(185));
 const version_util_1 = __webpack_require__(250);
 Object.defineProperty(exports, "getLatestGcloudSDKVersion", { enumerable: true, get: function () { return version_util_1.getLatestGcloudSDKVersion; } });
+const deploy_cloudrun_1 = __webpack_require__(530);
 /**
  * Checks if gcloud is installed.
  *
@@ -10764,7 +10823,7 @@ function installGcloudSDK(version) {
         // Retreive the release corresponding to the specified version and OS
         const osPlat = os.platform();
         const osArch = os.arch();
-        const url = yield format_url_1.getReleaseURL(osPlat, osArch, version);
+        const url = yield (0, format_url_1.getReleaseURL)(osPlat, osArch, version);
         // Download and extract the release
         const extPath = yield downloadUtil.downloadAndExtractTool(url);
         if (!extPath) {
@@ -10806,7 +10865,7 @@ function parseServiceAccountKey(serviceAccountKey) {
     }
     `;
         const message = 'Error parsing credentials: ' +
-            error.message +
+            (0, deploy_cloudrun_1.convertUnknown)(error) +
             '\nEnsure your credentials are base64 encoded or validate JSON format: ' +
             keyFormat;
         throw new Error(message);
@@ -12630,7 +12689,7 @@ const attempt_1 = __webpack_require__(503);
  */
 function downloadAndExtractTool(url) {
     return __awaiter(this, void 0, void 0, function* () {
-        const downloadPath = yield attempt_1.retry(() => __awaiter(this, void 0, void 0, function* () { return toolCache.downloadTool(url); }), {
+        const downloadPath = yield (0, attempt_1.retry)(() => __awaiter(this, void 0, void 0, function* () { return toolCache.downloadTool(url); }), {
             delay: 200,
             factor: 2,
             maxAttempts: 4,

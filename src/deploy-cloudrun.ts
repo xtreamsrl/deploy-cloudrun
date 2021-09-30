@@ -19,9 +19,11 @@ import * as exec from '@actions/exec';
 import * as toolCache from '@actions/tool-cache';
 import * as setupGcloud from '../setup-google-cloud-sdk/src/';
 import path from 'path';
+import fs from 'fs';
 
 export const GCLOUD_METRICS_ENV_VAR = 'CLOUDSDK_METRICS_ENVIRONMENT';
 export const GCLOUD_METRICS_LABEL = 'github-actions-deploy-cloudrun';
+export const TEMPLATED_YAML_FILE = './deploy-cloud-run-templated-service.yaml';
 
 /**
  * Executes the main action. It includes the main business logic and is the
@@ -50,6 +52,10 @@ export async function run(): Promise<void> {
     const revTraffic = core.getInput('revision_traffic');
     const tagTraffic = core.getInput('tag_traffic');
     const flags = core.getInput('flags');
+    const replaceEnvVarsInYaml =
+      core.getInput('replace_env_vars_in_yaml').toLowerCase() == 'true'
+        ? true
+        : false;
 
     let installBeta = false; // Flag for installing gcloud beta components
     let cmd;
@@ -105,7 +111,7 @@ export async function run(): Promise<void> {
         'run',
         'services',
         'replace',
-        metadata,
+        replaceEnvVarsInYaml ? metadata : TEMPLATED_YAML_FILE,
         '--platform',
         'managed',
         '--region',
@@ -217,10 +223,26 @@ export async function run(): Promise<void> {
       } else {
         throw new Error(convertUnknown(error));
       }
+    } finally {
+      if (replaceEnvVarsInYaml) {
+        fs.unlinkSync(TEMPLATED_YAML_FILE);
+      }
     }
   } catch (error) {
     core.setFailed(convertUnknown(error));
   }
+}
+
+export function createYamlFileWithEnvVars(
+  yamlTemplatePath: string,
+  destinationFile: string,
+) {
+  let yamlContent = fs.readFileSync(yamlTemplatePath).toString();
+  console.debug(process.env);
+  for (const envVarName in process.env) {
+    yamlContent = yamlContent.split(`\$\{${envVarName}\}`).join(process.env[envVarName]!);
+  }
+  fs.writeFileSync(destinationFile, yamlContent);
 }
 
 export function setUrlOutput(output: string): string | undefined {
