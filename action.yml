@@ -72,6 +72,11 @@ inputs:
       YAML service description for the Cloud Run service.
     required: false
 
+  replace_env_vars_in_yaml:
+    description: |-
+      Replace env vars inside yaml file
+    required: false
+
   project_id:
     description: |-
       The Google Cloud Project ID. If unset, this is inherited from the environment.

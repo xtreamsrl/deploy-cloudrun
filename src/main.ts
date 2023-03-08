@@ -47,6 +47,7 @@ import {
 } from '@google-github-actions/setup-cloud-sdk';
 
 import { parseDeployResponse, parseUpdateTrafficResponse } from './output-parser';
+import * as fs from 'fs';
 
 // Do not listen to the linter - this can NOT be rewritten as an ES6 import
 // statement.
@@ -73,6 +74,8 @@ enum ResponseTypes {
  * primary entry point. It is documented inline.
  */
 export async function run(): Promise<void> {
+  const TEMPLATED_YAML_FILE = './deploy-cloud-run-templated-service.yaml';
+
   // Register metrics
   const restoreEnv = stubEnv({
     CLOUDSDK_METRICS_ENVIRONMENT: 'github-actions-deploy-cloudrun',
@@ -105,6 +108,7 @@ export async function run(): Promise<void> {
     const tagTraffic = getInput('tag_traffic');
     const labels = parseKVString(getInput('labels'));
     const flags = getInput('flags');
+    const replaceEnvVarsInYaml = getInput('replace_env_vars_in_yaml').toLowerCase() == 'true';
 
     let responseType = ResponseTypes.DEPLOY; // Default response type for output parsing
     let cmd;
@@ -153,7 +157,10 @@ export async function run(): Promise<void> {
         }
       }
     } else if (metadata) {
-      cmd = ['run', 'services', 'replace', metadata];
+      if (replaceEnvVarsInYaml) {
+        createYamlFileWithEnvVars(metadata, TEMPLATED_YAML_FILE);
+      }
+      cmd = ['run', 'services', 'replace', replaceEnvVarsInYaml ? TEMPLATED_YAML_FILE : metadata];
 
       const providedButIgnored: Record<string, boolean> = {
         image: image !== '',
@@ -266,6 +273,14 @@ export async function run(): Promise<void> {
   } finally {
     restoreEnv();
   }
+}
+
+export function createYamlFileWithEnvVars(yamlTemplatePath: string, destinationFile: string) {
+  let yamlContent = fs.readFileSync(yamlTemplatePath).toString();
+  for (const envVarName in process.env) {
+    yamlContent = yamlContent.split(`$\{${envVarName}}`).join(process.env[envVarName]!);
+  }
+  fs.writeFileSync(destinationFile, yamlContent);
 }
 
 /**

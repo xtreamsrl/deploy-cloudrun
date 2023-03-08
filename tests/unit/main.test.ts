@@ -24,7 +24,9 @@ import * as setupGcloud from '@google-github-actions/setup-cloud-sdk';
 import { TestToolCache } from '@google-github-actions/setup-cloud-sdk';
 import { errorMessage } from '@google-github-actions/actions-utils';
 
-import { run, kvToString } from '../../src/main';
+import { run, kvToString, createYamlFileWithEnvVars } from '../../src/main';
+import path from 'path';
+import * as fs from 'fs';
 
 // These are mock data for github actions inputs, where camel case is expected.
 const fakeInputs: { [key: string]: string } = {
@@ -229,6 +231,19 @@ describe('#run', function () {
     this.stubs.getInput.withArgs('gcloud_component').returns('beta');
     await run();
     expect(this.stubs.installComponent.withArgs('beta').callCount).to.eq(1);
+  });
+});
+
+describe('#createYamlFileWithEnvVars', function () {
+  it('parses flags using equals', async function () {
+    process.env.VAR1_NAME = 'var1value';
+    process.env.VAR2_NAME = 'var2value';
+    const destPath = path.join(__dirname, './service.envtemplate.updated.yaml');
+    createYamlFileWithEnvVars(path.join(__dirname, 'service.envtemplate.yaml'), destPath);
+    const fileContent = fs.readFileSync(destPath).toString();
+    expect(fileContent).contain(`value: 'var1value'`);
+    expect(fileContent).contain(`value: 'var2value'`);
+    fs.unlinkSync(destPath);
   });
 });
 
